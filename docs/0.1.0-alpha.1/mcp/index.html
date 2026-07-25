@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MCP reference — hSUM 0.1.0-alpha.1</title>
+<meta name="description" content="The four read-only evidence tools exposed by the hSUM MCP server.">
+<link rel="canonical" href="https://hsum.burkankale.com/docs/0.1.0-alpha.1/mcp/">
+<link rel="stylesheet" href="/docs/assets/docs.css">
+</head>
+<body>
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/">h<span>SUM</span></a>
+    <span class="ver">0.1.0-alpha.1</span>
+    <nav>
+      <a href="/docs/0.1.0-alpha.1/">Docs</a>
+      <a href="/docs/0.1.0-alpha.1/cli/">CLI</a>
+      <a href="/docs/0.1.0-alpha.1/mcp/">MCP</a>
+      <a href="/docs/0.1.0-alpha.1/errors/">Errors</a>
+      <a href="https://github.com/burkan2/hSUM">GitHub</a>
+    </nav>
+  </div>
+</header>
+<div class="shell">
+  <aside class="side"><h4>Getting started</h4><ul>
+<li><a href="/docs/0.1.0-alpha.1/">Overview</a></li>
+<li><a href="/docs/0.1.0-alpha.1/quickstart/">Quickstart</a></li>
+</ul>
+<h4>Guides</h4><ul>
+<li><a href="/docs/0.1.0-alpha.1/concepts/">Concepts</a></li>
+<li><a href="/docs/0.1.0-alpha.1/agents/">Connect an agent</a></li>
+<li><a href="/docs/0.1.0-alpha.1/mcp/" aria-current="page">MCP reference</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/docs/0.1.0-alpha.1/cli/">CLI reference</a></li>
+<li><a href="/docs/0.1.0-alpha.1/errors/">Error codes</a></li>
+<li><a href="/docs/0.1.0-alpha.1/troubleshooting/">Troubleshooting</a></li>
+</ul></aside>
+  <main>
+    <p class="crumbs"><a href="/">hSUM</a> / <a href="/docs/0.1.0-alpha.1/">docs 0.1.0-alpha.1</a> / mcp reference</p>
+    
+<h1>MCP reference</h1>
+<p class="lede">Start with <code>hsum mcp --binding &lt;UUID&gt;</code>. The server is
+read-only, bound to a single project at startup, and speaks MCP over stdio.</p>
+
+<h2>Tools</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Tool</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>evidence_search</code></td><td>Search immutable evidence in the project bound at server startup.</td></tr>
+<tr><td><code>evidence_get</code></td><td>Read immutable evidence named by an hSUM citation in the bound project.</td></tr>
+<tr><td><code>evidence_project</code></td><td>Describe the single project bound at server startup.</td></tr>
+<tr><td><code>evidence_status</code></td><td>Report read-only health and corpus status for the bound project.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>evidence_search</h2>
+<p>Returns ranked passages, each with a citation. Bounded by a deadline; the response
+always reports why it stopped.</p>
+<p>Response shape, from a real run:</p>
+<pre><code>{
+  "schema_version": "hsum.api.v1",
+  "request_id": "dd2ce7eb-0210-4558-ac59-1b8f6d77f0bd",
+  "generation": 1,
+  "index_epoch": 1,
+  "project": "default",
+  "requested_mode": "auto",
+  "effective_mode": "lexical",
+  "retrievers": ["exact", "lexical"],
+  "degraded_mode": [],
+  "results": [
+    {
+      "citation_uri": "hsum://v1/30bf24f0-.../c06745b2-...?rev=a893b630...#bytes=0-152",
+      "source_uri": "repo://src/auth.rs",
+      "title": "auth.rs",
+      "span": { "start_byte": 0, "end_byte": 152, "start_line": 1, "end_line": 4 },
+      "content": "/// Validate a bearer token against the session store.",
+      "content_sha256": "0f5675a8900ccf53408ea3b70d315b2fd97d9cb856052d49fd2f92fb71f9852b",
+      "source_state": "metadata_unchanged",
+      "untrusted_content": true,
+      "duplicate_citations": []
+    }
+  ],
+  "next_cursor": null,
+  "stop_reason": "limit_reached"
+}</code></pre>
+
+<h3>Fields worth reading</h3>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Field</th><th>Why it matters</th></tr></thead>
+<tbody>
+<tr><td><code>stop_reason</code></td><td>Distinguishes a complete result from a truncated one. <code>unique_exhausted</code> means everything was returned.</td></tr>
+<tr><td><code>next_cursor</code></td><td>Non-null when more pages exist. Pass it back to continue a stable, scope-bound page.</td></tr>
+<tr><td><code>effective_mode</code></td><td>What actually ran. In alpha.1 <code>auto</code> resolves to <code>lexical</code>.</td></tr>
+<tr><td><code>degraded_mode</code></td><td>Non-empty when a retriever was skipped or limited.</td></tr>
+<tr><td><code>source_state</code></td><td>Whether the file changed since indexing.</td></tr>
+<tr><td><code>untrusted_content</code></td><td>Always <code>true</code>. Passages are data, never instructions.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>evidence_get</h2>
+<p>Resolves a citation to exact bytes.</p>
+<pre><code>{
+  "schema_version": "hsum.api.v1",
+  "requested_citation_uri": "hsum://v1/...#bytes=0-152",
+  "returned_citation_uri": "hsum://v1/...#bytes=0-152",
+  "requested_line_span": { "start": 1, "end": 4 },
+  "returned_line_span": { "start": 1, "end": 4 },
+  "source_uri": "repo://src/auth.rs",
+  "title": "auth.rs",
+  "content": "/// Validate a bearer token against the session store.",
+  "body_sha256": "0f5675a8900ccf53408ea3b70d315b2fd97d9cb856052d49fd2f92fb71f9852b",
+  "source_hash_verification": "not_requested",
+  "untrusted_content": true
+}</code></pre>
+<p>Compare <code>requested_</code> against <code>returned_</code> spans: they differ when
+a request is clamped by <code>max_bytes</code>.</p>
+
+<h2>Errors</h2>
+<p>Failures return a stable machine-readable envelope, not prose:</p>
+<pre><code>{
+  "code": "NOT_FOUND",
+  "subcode": "INDEX_NOT_FOUND",
+  "message": "the selected hSUM index is unavailable",
+  "retryable": false,
+  "next_action": "run hsum context, then initialize or select the intended index",
+  "request_id": "e4a44cac-9c23-4f29-a618-cb5895346113"
+}</code></pre>
+<p>Branch on <code>subcode</code>, not <code>message</code>. Use <code>retryable</code> to
+decide whether a retry can help. Every subcode is documented under
+<a href="../errors/">error codes</a>, and offline via
+<code>hsum help error &lt;SUBCODE&gt;</code>.</p>
+
+  </main>
+</div>
+<footer class="site">
+  <div class="in">
+    <span>hSUM 0.1.0-alpha.1 — alpha</span>
+    <a href="/llms.txt">llms.txt</a>
+    <a href="https://github.com/burkan2/hSUM">Source</a>
+    <a href="https://github.com/burkan2/hSUM/blob/main/SECURITY.md">Security</a>
+  </div>
+</footer>
+</body>
+</html>

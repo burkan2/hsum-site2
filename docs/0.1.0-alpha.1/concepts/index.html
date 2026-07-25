@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Concepts — hSUM 0.1.0-alpha.1</title>
+<meta name="description" content="Generations, citations, trust bindings, and the guarantees hSUM makes.">
+<link rel="canonical" href="https://hsum.burkankale.com/docs/0.1.0-alpha.1/concepts/">
+<link rel="stylesheet" href="/docs/assets/docs.css">
+</head>
+<body>
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/">h<span>SUM</span></a>
+    <span class="ver">0.1.0-alpha.1</span>
+    <nav>
+      <a href="/docs/0.1.0-alpha.1/">Docs</a>
+      <a href="/docs/0.1.0-alpha.1/cli/">CLI</a>
+      <a href="/docs/0.1.0-alpha.1/mcp/">MCP</a>
+      <a href="/docs/0.1.0-alpha.1/errors/">Errors</a>
+      <a href="https://github.com/burkan2/hSUM">GitHub</a>
+    </nav>
+  </div>
+</header>
+<div class="shell">
+  <aside class="side"><h4>Getting started</h4><ul>
+<li><a href="/docs/0.1.0-alpha.1/">Overview</a></li>
+<li><a href="/docs/0.1.0-alpha.1/quickstart/">Quickstart</a></li>
+</ul>
+<h4>Guides</h4><ul>
+<li><a href="/docs/0.1.0-alpha.1/concepts/" aria-current="page">Concepts</a></li>
+<li><a href="/docs/0.1.0-alpha.1/agents/">Connect an agent</a></li>
+<li><a href="/docs/0.1.0-alpha.1/mcp/">MCP reference</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/docs/0.1.0-alpha.1/cli/">CLI reference</a></li>
+<li><a href="/docs/0.1.0-alpha.1/errors/">Error codes</a></li>
+<li><a href="/docs/0.1.0-alpha.1/troubleshooting/">Troubleshooting</a></li>
+</ul></aside>
+  <main>
+    <p class="crumbs"><a href="/">hSUM</a> / <a href="/docs/0.1.0-alpha.1/">docs 0.1.0-alpha.1</a> / concepts</p>
+    
+<h1>Concepts</h1>
+<p class="lede">Five ideas explain most of hSUM's behavior.</p>
+
+<h2>Index and project</h2>
+<p>An <strong>index</strong> is one SQLite database bound to one filesystem root. A
+<strong>project</strong> is a named scope inside it; alpha.1 creates <code>default</code>
+automatically. Both get a stable UUID that appears in every citation.</p>
+<pre><code>hsum context</code></pre>
+<pre><code>Index: repo
+Index ID: 30bf24f0-457f-4bf2-b56d-cb33ba0eb547
+Project: default
+Project ID: d385f3cf-c799-45fb-9851-18071cc86059
+Source root: /path/to/repo
+Binding: 495d788b-897c-46b6-86c2-5d28d80b3d42
+Selection: trusted_root</code></pre>
+
+<h2>Generations</h2>
+<p>Every <code>ingest</code> commits one <strong>generation</strong> — an atomic snapshot
+of the source. Either the whole generation lands or none of it does; there is no
+half-updated index. <code>hsum status</code> reports the current generation number.</p>
+<p>A single-writer advisory lock serializes ingests. Concurrent readers are never
+blocked, so an agent can search while an ingest runs.</p>
+
+<h2>Citations</h2>
+<p>A citation names exact bytes at an exact revision:</p>
+<pre><code>hsum://v1/&lt;index_id&gt;/&lt;source_id&gt;/&lt;document_id&gt;?rev=&lt;sha256&gt;#bytes=&lt;start&gt;-&lt;end&gt;</code></pre>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Part</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>index_id</code></td><td>UUID of the index that produced the passage</td></tr>
+<tr><td><code>source_id</code></td><td>UUID of the source file</td></tr>
+<tr><td><code>document_id</code></td><td>UUID of the indexed document</td></tr>
+<tr><td><code>rev</code></td><td>SHA-256 of the file revision at index time</td></tr>
+<tr><td><code>bytes</code></td><td>Half-open byte span within that revision</td></tr>
+</tbody>
+</table>
+</div>
+<p>Because <code>rev</code> pins content, a citation cannot silently drift. Edit the file
+and the old citation still resolves to what was actually indexed. Pass
+<code>--verify-source-hash</code> to <code>get</code> to check the current file against
+the pinned revision.</p>
+
+<div class="note">
+<p><strong>Why this matters for agents</strong></p>
+<p>An agent that answers with a citation is making a checkable claim. You can resolve it
+yourself and see the exact bytes, rather than trusting a paraphrase.</p>
+</div>
+
+<h2>Trust bindings</h2>
+<p>The MCP server refuses to serve a project unless the caller presents a
+<strong>binding UUID</strong> created by <code>hsum init</code> or <code>hsum trust</code>.
+The binding is user-side state, not a secret embedded in the repo, so cloning a
+repository grants no access to anyone's index.</p>
+<pre><code>hsum trust /path/to/repo --confirm</code></pre>
+<p><code>--confirm</code> is required; hSUM never creates a trust binding implicitly.</p>
+
+<h2>Untrusted content</h2>
+<p>Every search and get result carries <code>"untrusted_content": true</code>. Indexed
+files are data, not instructions — if a repository contains text telling an agent to take
+an action, that text is content to be reported, never a command to follow.</p>
+<div class="note warn">
+<p><strong>Prompt injection</strong></p>
+<p>Treat retrieved passages as untrusted input. hSUM marks them, but the agent runtime
+must honor the marking.</p>
+</div>
+
+<h2>Retrieval</h2>
+<p>alpha.1 runs three retrievers and merges them: exact identifier matching, conservative
+quoted-phrase matching, and lexical BM25. <code>--mode auto</code> and
+<code>--mode lexical</code> are equivalent in this release. There is no vector search and
+no embedding model, which is why first-run needs no download.</p>
+<p>Retrieval is bounded. <code>--timeout-ms</code> (default <code>3000</code>) caps work,
+and the response reports a <code>stop_reason</code> such as <code>limit_reached</code> or
+<code>unique_exhausted</code> so you can tell a complete result from a truncated one.</p>
+
+  </main>
+</div>
+<footer class="site">
+  <div class="in">
+    <span>hSUM 0.1.0-alpha.1 — alpha</span>
+    <a href="/llms.txt">llms.txt</a>
+    <a href="https://github.com/burkan2/hSUM">Source</a>
+    <a href="https://github.com/burkan2/hSUM/blob/main/SECURITY.md">Security</a>
+  </div>
+</footer>
+</body>
+</html>
