@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Troubleshooting — hSUM 0.1.0-alpha.2</title>
+<meta name="description" content="Common hSUM failures and how to resolve them.">
+<link rel="canonical" href="https://hsum.burkankale.com/docs/0.1.0-alpha.2/troubleshooting/">
+<link rel="stylesheet" href="/docs/assets/docs.css">
+</head>
+<body>
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/">h<span>SUM</span></a>
+    <span class="ver">0.1.0-alpha.2</span>
+    <nav>
+      <a href="/docs/0.1.0-alpha.2/">Docs</a>
+      <a href="/docs/0.1.0-alpha.2/cli/">CLI</a>
+      <a href="/docs/0.1.0-alpha.2/mcp/">MCP</a>
+      <a href="/docs/0.1.0-alpha.2/errors/">Errors</a>
+      <a href="https://github.com/burkan2/hSUM">GitHub</a>
+    </nav>
+  </div>
+</header>
+<div class="shell">
+  <aside class="side"><h4>Getting started</h4><ul>
+<li><a href="/docs/0.1.0-alpha.2/">Overview</a></li>
+<li><a href="/docs/0.1.0-alpha.2/quickstart/">Quickstart</a></li>
+</ul>
+<h4>Guides</h4><ul>
+<li><a href="/docs/0.1.0-alpha.2/concepts/">Concepts</a></li>
+<li><a href="/docs/0.1.0-alpha.2/agents/">Connect an agent</a></li>
+<li><a href="/docs/0.1.0-alpha.2/mcp/">MCP reference</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/docs/0.1.0-alpha.2/cli/">CLI reference</a></li>
+<li><a href="/docs/0.1.0-alpha.2/errors/">Error codes</a></li>
+<li><a href="/docs/0.1.0-alpha.2/troubleshooting/" aria-current="page">Troubleshooting</a></li>
+</ul></aside>
+  <main>
+    <p class="crumbs"><a href="/">hSUM</a> / <a href="/docs/0.1.0-alpha.2/">docs 0.1.0-alpha.2</a> / troubleshooting</p>
+    
+<h1>Troubleshooting</h1>
+<p class="lede">Start with <code>hsum context</code> and <code>hsum doctor</code>. Between
+them they explain most failures.</p>
+
+<h2>Read an error</h2>
+<p>hSUM errors name a cause, a fix, and a stable subcode:</p>
+<pre><code>problem: the selected hSUM index is unavailable
+cause: no authorized managed index matches the selection
+fix: run hsum context, then initialize or select the intended index
+learn: hsum help error INDEX_NOT_FOUND — code: INDEX_NOT_FOUND — request: d4db1501-...</code></pre>
+<p>Every subcode has an offline explanation:</p>
+<pre><code>hsum help error INDEX_NOT_FOUND</code></pre>
+
+<h2>INDEX_NOT_FOUND</h2>
+<p>The most common first-run failure. hSUM cannot find an index for the current
+selection. Causes, in order of likelihood:</p>
+<ul>
+  <li>You are not inside the indexed root. <code>cd</code> into it, or run <code>hsum context</code> to see what is selected.</li>
+  <li>You passed <code>--data-dir</code> or <code>--cache-dir</code> on one command but not the next. These must match across invocations.</li>
+  <li><code>HSUM_HOME</code> differs between shells, so config resolves elsewhere.</li>
+  <li>No index exists yet — run <code>hsum init .</code>.</li>
+</ul>
+
+<h2>PIPELINE_FINGERPRINT after upgrading</h2>
+<p>The index was built by different indexing rules and cannot be read safely by this
+binary. Replace it explicitly:</p>
+<pre><code>hsum init --rebuild --dry-run
+hsum init --rebuild</code></pre>
+<p>The dry run writes nothing. The rebuild replaces the trusted index and binding.
+Evidence and citations recorded before the pipeline change no longer resolve.</p>
+
+<h2>Search returns nothing</h2>
+<ul>
+  <li>Confirm documents exist: <code>hsum status</code> reports active documents and passages.</li>
+  <li>Re-run <code>hsum ingest</code> if files changed. There is no watcher in alpha.2.</li>
+  <li>alpha.2 is lexical, not semantic. Search for identifiers and phrases that literally appear in the source; conceptual paraphrases will not match.</li>
+  <li>Check <code>stop_reason</code> in <code>--json</code> output to see whether retrieval was truncated.</li>
+</ul>
+
+<h2>Agent cannot see the server</h2>
+<ol>
+  <li>Run <code>hsum client doctor &lt;CLIENT&gt;</code> — it validates the executable, binding, scope, framing, and runs a read-only probe.</li>
+  <li>Confirm the config uses an <strong>absolute</strong> path to the binary.</li>
+  <li>Confirm the binding UUID matches <code>hsum context</code>.</li>
+  <li>Regenerate the snippet with <code>hsum client config &lt;CLIENT&gt;</code> rather than hand-editing.</li>
+</ol>
+
+<h2>WRITER_LOCK</h2>
+<p>Another ingest holds the single-writer lock. Wait, or raise the ceiling:</p>
+<pre><code>hsum ingest --lock-timeout-ms 30000</code></pre>
+<p>Readers are never blocked, so search keeps working during an ingest.</p>
+
+<h2>Refused operations</h2>
+<p>hSUM refuses destructive or surprising actions until you confirm them explicitly:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Subcode</th><th>Confirm with</th></tr></thead>
+<tbody>
+<tr><td><code>BROAD_ROOT_CONFIRMATION_REQUIRED</code></td><td><code>hsum init --allow-broad-root</code></td></tr>
+<tr><td><code>LARGE_SOURCE_CONFIRMATION_REQUIRED</code></td><td><code>hsum init --allow-large-source</code></td></tr>
+<tr><td><code>EMPTY_SNAPSHOT_CONFIRMATION_REQUIRED</code></td><td><code>hsum ingest --allow-empty-snapshot</code></td></tr>
+<tr><td><code>MASS_DELETE_CONFIRMATION_REQUIRED</code></td><td><code>hsum ingest --allow-mass-delete</code></td></tr>
+<tr><td><code>TRUST_CONFIRMATION_REQUIRED</code></td><td><code>hsum trust &lt;PATH&gt; --confirm</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Read the message before confirming — each guards a real footgun.</p>
+
+<h2>Citation errors in the shell</h2>
+<p>Citations contain <code>?</code> and <code>#</code>. Unquoted, your shell will mangle
+them into <code>CITATION_MALFORMED</code>. Always quote:</p>
+<pre><code>hsum get 'hsum://v1/...?rev=...#bytes=0-152'</code></pre>
+
+<h2>Still stuck</h2>
+<ul>
+  <li><a href="../errors/">Full error code index</a></li>
+  <li><a href="https://github.com/burkan2/hSUM/issues">Open an issue</a> — include the <code>request_id</code> and <code>hsum --version --verbose</code></li>
+  <li><a href="https://github.com/burkan2/hSUM/blob/main/SECURITY.md">Report a security issue privately</a></li>
+</ul>
+
+  </main>
+</div>
+<footer class="site">
+  <div class="in">
+    <span>hSUM 0.1.0-alpha.2 — alpha</span>
+    <a href="/llms.txt">llms.txt</a>
+    <a href="https://github.com/burkan2/hSUM">Source</a>
+    <a href="https://github.com/burkan2/hSUM/blob/main/SECURITY.md">Security</a>
+  </div>
+</footer>
+</body>
+</html>
