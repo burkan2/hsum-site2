@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CLI reference — hSUM 0.1.0-alpha.3</title>
+<meta name="description" content="Every hSUM 0.1.0-alpha.3 command and flag.">
+<link rel="canonical" href="https://hsum.burkankale.com/docs/0.1.0-alpha.3/cli/">
+<link rel="stylesheet" href="/docs/assets/docs.css">
+</head>
+<body>
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/">h<span>SUM</span></a>
+    <span class="ver">0.1.0-alpha.3</span>
+    <nav>
+      <a href="/docs/0.1.0-alpha.3/">Docs</a>
+      <a href="/docs/0.1.0-alpha.3/cli/">CLI</a>
+      <a href="/docs/0.1.0-alpha.3/mcp/">MCP</a>
+      <a href="/docs/0.1.0-alpha.3/errors/">Errors</a>
+      <a href="https://github.com/burkan2/hSUM">GitHub</a>
+    </nav>
+  </div>
+</header>
+<div class="shell">
+  <aside class="side"><h4>Getting started</h4><ul>
+<li><a href="/docs/0.1.0-alpha.3/">Overview</a></li>
+<li><a href="/docs/0.1.0-alpha.3/quickstart/">Quickstart</a></li>
+</ul>
+<h4>Guides</h4><ul>
+<li><a href="/docs/0.1.0-alpha.3/concepts/">Concepts</a></li>
+<li><a href="/docs/0.1.0-alpha.3/agents/">Connect an agent</a></li>
+<li><a href="/docs/0.1.0-alpha.3/mcp/">MCP reference</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/docs/0.1.0-alpha.3/cli/" aria-current="page">CLI reference</a></li>
+<li><a href="/docs/0.1.0-alpha.3/errors/">Error codes</a></li>
+<li><a href="/docs/0.1.0-alpha.3/troubleshooting/">Troubleshooting</a></li>
+</ul></aside>
+  <main>
+    <p class="crumbs"><a href="/">hSUM</a> / <a href="/docs/0.1.0-alpha.3/">docs 0.1.0-alpha.3</a> / cli reference</p>
+
+<h1>CLI reference</h1>
+<p class="lede">The complete alpha.3 command surface. Later release-train commands do not
+appear as stubs.</p>
+
+<h2>Global options</h2>
+<p>Accepted by every command:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>-v, --verbose...</code></td><td>Increase diagnostic detail; repeat for more</td></tr>
+<tr><td><code>-q, --quiet</code></td><td>Suppress progress, preserve errors and results</td></tr>
+<tr><td><code>--no-progress</code></td><td>Disable progress, keep warnings and summaries</td></tr>
+<tr><td><code>--no-color</code></td><td>Disable colored output</td></tr>
+<tr><td><code>--config &lt;PATH&gt;</code></td><td>Use an explicit configuration file</td></tr>
+<tr><td><code>--data-dir &lt;PATH&gt;</code></td><td>Override the managed data directory</td></tr>
+<tr><td><code>--cache-dir &lt;PATH&gt;</code></td><td>Override the managed cache directory</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>init</h2>
+<p>Create one local filesystem-backed index and project.</p>
+<pre><code>hsum init [OPTIONS] [PATH]</code></pre>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>--index &lt;NAME&gt;</code></td><td>Collision-safe logical index name</td></tr>
+<tr><td><code>--project &lt;NAME&gt;</code></td><td>Collision-safe logical project name</td></tr>
+<tr><td><code>--rebuild</code></td><td>Replace the trusted index for this root and re-ingest from scratch</td></tr>
+<tr><td><code>--no-ingest</code></td><td>Create config and trust state without the first ingest</td></tr>
+<tr><td><code>--dry-run</code></td><td>Inspect selection and estimates without writing</td></tr>
+<tr><td><code>--write-pointer</code></td><td>Write the optional repository pointer</td></tr>
+<tr><td><code>--force-pointer</code></td><td>Replace a conflicting repository pointer</td></tr>
+<tr><td><code>--allow-broad-root</code></td><td>Confirm a normally refused broad root</td></tr>
+<tr><td><code>--allow-large-source</code></td><td>Confirm a source above default limits</td></tr>
+<tr><td><code>--index-quota-bytes &lt;BYTES&gt;</code></td><td>Max managed index bytes, including recovery reserve</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>trust</h2>
+<p>Authorize a canonical repository root for direct and MCP use.</p>
+<pre><code>hsum trust &lt;PATH&gt; --confirm</code></pre>
+<p><code>--confirm</code> is mandatory. Optional: <code>--index &lt;NAME&gt;</code>,
+<code>--project &lt;NAME&gt;</code>.</p>
+
+<h2>ingest</h2>
+<p>Refresh the filesystem source into one atomic generation.</p>
+<pre><code>hsum ingest [OPTIONS]</code></pre>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>--dry-run</code></td><td>Discover, validate, estimate — commit nothing</td></tr>
+<tr><td><code>--lock-timeout-ms &lt;MS&gt;</code></td><td>Max wait for the single-writer lock (default <code>5000</code>)</td></tr>
+<tr><td><code>--allow-empty-snapshot</code></td><td>Confirm replacing a nonempty source with an empty one</td></tr>
+<tr><td><code>--allow-mass-delete</code></td><td>Confirm a deletion above the mass-delete budget</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>search</h2>
+<p>Search exact identifiers, conservative quotes, and active lexical text.</p>
+<pre><code>hsum search &lt;QUERY&gt; [OPTIONS]</code></pre>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>--mode &lt;MODE&gt;</code></td><td><code>auto</code> or <code>lexical</code> (equivalent in alpha.3)</td></tr>
+<tr><td><code>--limit &lt;N&gt;</code></td><td>Max passages (default <code>10</code>)</td></tr>
+<tr><td><code>--cursor &lt;VALUE&gt;</code></td><td>Continue a stable, scope-bound result page</td></tr>
+<tr><td><code>--timeout-ms &lt;MS&gt;</code></td><td>Retrieval deadline (default <code>3000</code>)</td></tr>
+<tr><td><code>--json</code></td><td>Emit exactly one JSON document</td></tr>
+<tr><td><code>--explain</code></td><td>Include retriever scoring and stop information</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>get</h2>
+<p>Resolve immutable bytes from an <code>hsum://v1</code> citation.</p>
+<pre><code>hsum get &lt;CITATION_URI&gt; [OPTIONS]</code></pre>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Flag</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td><code>--max-bytes &lt;N&gt;</code></td><td>Max returned UTF-8 bytes (default <code>16384</code>)</td></tr>
+<tr><td><code>--verify-source-hash</code></td><td>Probe the current source hash against the pinned revision</td></tr>
+<tr><td><code>--json</code></td><td>Emit exactly one JSON document</td></tr>
+</tbody>
+</table>
+</div>
+<p>Quote the citation — it contains <code>?</code> and <code>#</code>.</p>
+
+<h2>status, doctor, context</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>hsum status [--problems] [--json]</code></td><td>Index state, generation, counts, disk budget</td></tr>
+<tr><td><code>hsum doctor</code></td><td>Read-only diagnosis; no repair switches by design</td></tr>
+<tr><td><code>hsum context [--json]</code></td><td>Effective index, project, root, binding, config origins</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>client</h2>
+<pre><code>hsum client config &lt;CLIENT&gt; [--format json|toml]
+hsum client doctor &lt;CLIENT&gt;</code></pre>
+<p>Clients: <code>codex</code>, <code>claude-code</code>, <code>claude-desktop</code>,
+<code>generic</code>. See <a href="../agents/">Connect an agent</a>.</p>
+
+<h2>mcp</h2>
+<pre><code>hsum mcp --binding &lt;UUID&gt;</code></pre>
+<p>Starts the project-bound, read-only MCP stdio server. <code>--project &lt;NAME&gt;</code>
+selects a project only inside an already trusted direct-CLI context.</p>
+
+<h2>help, completions, man</h2>
+<pre><code>hsum help error &lt;SUBCODE&gt;
+hsum completions &lt;SHELL&gt;
+hsum man</code></pre>
+<p><code>help error</code> works offline and is version-pinned to the binary.</p>
+
+  </main>
+</div>
+<footer class="site">
+  <div class="in">
+    <span>hSUM 0.1.0-alpha.3 — alpha</span>
+    <a href="/llms.txt">llms.txt</a>
+    <a href="https://github.com/burkan2/hSUM">Source</a>
+    <a href="https://github.com/burkan2/hSUM/blob/main/SECURITY.md">Security</a>
+  </div>
+</footer>
+</body>
+</html>
