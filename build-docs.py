@@ -504,10 +504,10 @@ read-only, bound to a single project at startup, and speaks MCP over stdio.</p>
 <table>
 <thead><tr><th>Tool</th><th>Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>evidence_search</code></td><td>Search immutable evidence in the project bound at server startup.</td></tr>
-<tr><td><code>evidence_get</code></td><td>Read immutable evidence named by an hSUM citation in the bound project.</td></tr>
-<tr><td><code>evidence_project</code></td><td>Describe the single project bound at server startup.</td></tr>
-<tr><td><code>evidence_status</code></td><td>Report read-only health and corpus status for the bound project.</td></tr>
+<tr><td><code>evidence_search</code></td><td>Search ranked immutable passages with stable citations and live-source state.</td></tr>
+<tr><td><code>evidence_get</code></td><td>Resolve a citation to exact indexed bytes and optionally compare the live source hash.</td></tr>
+<tr><td><code>evidence_project</code></td><td>Describe the bound filesystem root, indexed extensions, sources, and generation.</td></tr>
+<tr><td><code>evidence_status</code></td><td>Report corpus counts, source health, and actionable index or storage problems.</td></tr>
 </tbody>
 </table>
 </div>
@@ -515,32 +515,44 @@ read-only, bound to a single project at startup, and speaks MCP over stdio.</p>
 <h2>evidence_search</h2>
 <p>Returns ranked passages, each with a citation. Bounded by a deadline; the response
 always reports why it stopped.</p>
-<p>Response shape, from a real run:</p>
+<p>Representative response shape. IDs, hashes, timestamps, content, and byte counts
+depend on the indexed project:</p>
 <pre><code>{
   "schema_version": "hsum.api.v1",
   "request_id": "dd2ce7eb-0210-4558-ac59-1b8f6d77f0bd",
+  "project_id": "bed633a6-3104-4010-8f1d-1742eed33e37",
+  "scope_revision": 0,
   "generation": 1,
   "index_epoch": 1,
-  "project": "default",
   "requested_mode": "auto",
   "effective_mode": "lexical",
   "retrievers": ["exact", "lexical"],
-  "degraded_mode": [],
   "results": [
     {
-      "citation_uri": "hsum://v1/30bf24f0-.../c06745b2-...?rev=a893b630...#bytes=0-152",
+      "citation_uri": "hsum://v1/72d90a91-8ae9-4086-b6d1-fc5d57ec99d6/8f6e262c-8776-51f1-a6f6-1f00f59eb5ac/920f61f9-8e4b-4b9d-b956-74be23e208ab?rev=3df02786a19348563b8df57f99c27835d2ea7f6fd963e5d340314993dcf78780#bytes=0-152",
+      "index_id": "72d90a91-8ae9-4086-b6d1-fc5d57ec99d6",
+      "source_id": "8f6e262c-8776-51f1-a6f6-1f00f59eb5ac",
+      "document_id": "920f61f9-8e4b-4b9d-b956-74be23e208ab",
+      "revision_sha256": "3df02786a19348563b8df57f99c27835d2ea7f6fd963e5d340314993dcf78780",
       "source_uri": "repo://src/auth.rs",
       "title": "auth.rs",
-      "span": { "start_byte": 0, "end_byte": 152, "start_line": 1, "end_line": 4 },
+      "byte_span": { "start": 0, "end": 152 },
+      "line_span": { "start": 1, "end": 4 },
       "content": "/// Validate a bearer token against the session store.",
-      "content_sha256": "0f5675a8900ccf53408ea3b70d315b2fd97d9cb856052d49fd2f92fb71f9852b",
+      "content_sha256": "13773ba003aeaba93cd8ac3e70c57a3dce7f77019f3b6a9251ad94bcb227576e",
+      "source_updated_at": "2026-07-26T03:07:09.089070016Z",
+      "indexed_at": "2026-07-26T03:39:06.0135Z",
+      "head_generation": 1,
       "source_state": "metadata_unchanged",
       "untrusted_content": true,
+      "score": null,
       "duplicate_citations": []
     }
   ],
   "next_cursor": null,
-  "stop_reason": "limit_reached"
+  "stop_reason": "unique_exhausted",
+  "truncated": false,
+  "body_bytes": 54
 }</code></pre>
 
 <h3>Fields worth reading</h3>
@@ -548,10 +560,12 @@ always reports why it stopped.</p>
 <table>
 <thead><tr><th>Field</th><th>Why it matters</th></tr></thead>
 <tbody>
-<tr><td><code>stop_reason</code></td><td>Distinguishes a complete result from a truncated one. <code>unique_exhausted</code> means everything was returned.</td></tr>
-<tr><td><code>next_cursor</code></td><td>Non-null when more pages exist. Pass it back to continue a stable, scope-bound page.</td></tr>
+<tr><td><code>stop_reason</code></td><td>Why candidate collection stopped: <code>limit_reached</code>, <code>unique_exhausted</code>, <code>work_budget_exhausted</code>, or <code>deadline</code>. Pagination completeness is reported separately.</td></tr>
+<tr><td><code>next_cursor</code></td><td>Non-null when another page exists. Pass it back unchanged to continue the same query and snapshot.</td></tr>
+<tr><td><code>truncated</code></td><td><code>true</code> when this page omits fetched results because of the requested page size or response-size ceiling.</td></tr>
+<tr><td><code>body_bytes</code></td><td>Total raw content bytes returned in this page.</td></tr>
 <tr><td><code>effective_mode</code></td><td>What actually ran. In alpha.2 <code>auto</code> resolves to <code>lexical</code>.</td></tr>
-<tr><td><code>degraded_mode</code></td><td>Non-empty when a retriever was skipped or limited.</td></tr>
+<tr><td><code>score</code></td><td><code>null</code> unless the request sets <code>explain: true</code>; then it contains fused and per-retriever rank details.</td></tr>
 <tr><td><code>source_state</code></td><td>Whether the file changed since indexing.</td></tr>
 <tr><td><code>untrusted_content</code></td><td>Always <code>true</code>. Passages are data, never instructions.</td></tr>
 </tbody>
@@ -562,19 +576,79 @@ always reports why it stopped.</p>
 <p>Resolves a citation to exact bytes.</p>
 <pre><code>{
   "schema_version": "hsum.api.v1",
-  "requested_citation_uri": "hsum://v1/...#bytes=0-152",
-  "returned_citation_uri": "hsum://v1/...#bytes=0-152",
+  "request_id": "1babdb7a-ec57-4644-9715-e4c5228257ba",
+  "requested_citation_uri": "hsum://v1/72d90a91-8ae9-4086-b6d1-fc5d57ec99d6/8f6e262c-8776-51f1-a6f6-1f00f59eb5ac/920f61f9-8e4b-4b9d-b956-74be23e208ab?rev=3df02786a19348563b8df57f99c27835d2ea7f6fd963e5d340314993dcf78780#bytes=0-152",
+  "returned_citation_uri": "hsum://v1/72d90a91-8ae9-4086-b6d1-fc5d57ec99d6/8f6e262c-8776-51f1-a6f6-1f00f59eb5ac/920f61f9-8e4b-4b9d-b956-74be23e208ab?rev=3df02786a19348563b8df57f99c27835d2ea7f6fd963e5d340314993dcf78780#bytes=0-152",
   "requested_line_span": { "start": 1, "end": 4 },
   "returned_line_span": { "start": 1, "end": 4 },
   "source_uri": "repo://src/auth.rs",
   "title": "auth.rs",
+  "metadata": {},
+  "source_updated_at": "2026-07-26T03:07:09.089070016Z",
+  "indexed_at": "2026-07-26T03:39:06.0135Z",
   "content": "/// Validate a bearer token against the session store.",
-  "body_sha256": "0f5675a8900ccf53408ea3b70d315b2fd97d9cb856052d49fd2f92fb71f9852b",
-  "source_hash_verification": "not_requested",
+  "body_sha256": "13773ba003aeaba93cd8ac3e70c57a3dce7f77019f3b6a9251ad94bcb227576e",
+  "source_state": "content_unchanged",
+  "source_hash_verification": "unchanged",
   "untrusted_content": true
 }</code></pre>
-<p>Compare <code>requested_</code> against <code>returned_</code> spans: they differ when
-a request is clamped by <code>max_bytes</code>.</p>
+<p>Compare <code>requested_</code> against <code>returned_</code> citations and line
+spans. <code>get</code> may widen the requested passage to whole stored chunks while
+staying within <code>max_bytes</code>. Set <code>verify_source_hash: true</code> to report
+whether the current file still has the indexed content hash.</p>
+
+<h2>evidence_project</h2>
+<p>Call this before interpreting a search miss. It states the filesystem coverage
+of the project selected when the MCP server started.</p>
+<pre><code>{
+  "schema_version": "hsum.api.v1",
+  "request_id": "aaf27f18-48ad-4572-993e-b21cb8540962",
+  "project_id": "bed633a6-3104-4010-8f1d-1742eed33e37",
+  "name": "default",
+  "scope_revision": 0,
+  "root": "/workspace/example",
+  "indexed_extensions": [
+    ".md", ".markdown", ".txt", ".rs", ".py", ".ts", ".tsx",
+    ".js", ".jsx", ".go", ".java", ".kt", ".kts", ".c", ".h",
+    ".cpp", ".hpp", ".cc", ".hh", ".cxx", ".rb", ".cs", ".swift",
+    ".php", ".scala", ".sh", ".bash", ".sql"
+  ],
+  "sources": [
+    {
+      "source_id": "8f6e262c-8776-51f1-a6f6-1f00f59eb5ac",
+      "name": "workspace",
+      "adapter_kind": "filesystem",
+      "logical_uri": "/workspace/example",
+      "last_success_at": "2026-07-26T03:39:06.0135Z"
+    }
+  ],
+  "last_successful_generation": 1
+}</code></pre>
+
+<h2>evidence_status</h2>
+<p>Use this when a search returns nothing unexpected. It separates an empty or
+unhealthy corpus from a genuine absence.</p>
+<pre><code>{
+  "schema_version": "hsum.api.v1",
+  "request_id": "45d17701-0abe-4d7b-b060-df52191889c7",
+  "index_id": "72d90a91-8ae9-4086-b6d1-fc5d57ec99d6",
+  "project_id": "bed633a6-3104-4010-8f1d-1742eed33e37",
+  "active_generation": 1,
+  "index_epoch": 1,
+  "source_count": 1,
+  "document_count": 42,
+  "passage_count": 318,
+  "model_fingerprint": null,
+  "degraded_modes": [],
+  "health_issues": [],
+  "index_problems": [],
+  "read_only": true,
+  "query_only": true
+}</code></pre>
+<p><code>health_issues</code> reports per-source ingest failures.
+<code>index_problems</code> reports actionable index or storage problems and includes
+a repair command when one exists. Alpha.2 has no model path, so
+<code>model_fingerprint</code> is <code>null</code>.</p>
 
 <h2>Errors</h2>
 <p>Failures return a stable machine-readable envelope, not prose:</p>

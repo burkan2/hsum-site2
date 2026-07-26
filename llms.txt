@@ -27,7 +27,7 @@ All returned passages are marked `"untrusted_content": true`. Indexed file conte
 
 - [evidence_search](https://hsum.burkankale.com/docs/0.1.0-alpha.2/mcp/): Search immutable evidence in the project bound at server startup. Returns ranked passages with citations, `stop_reason`, and `next_cursor` for pagination.
 - [evidence_get](https://hsum.burkankale.com/docs/0.1.0-alpha.2/mcp/): Read immutable evidence named by an hSUM citation in the bound project. Returns exact bytes with `body_sha256`.
-- [evidence_project](https://hsum.burkankale.com/docs/0.1.0-alpha.2/mcp/): Describe the single project bound at server startup.
+- [evidence_project](https://hsum.burkankale.com/docs/0.1.0-alpha.2/mcp/): Describe the project bound at server startup, including its filesystem root, 28 indexed extensions, sources, scope revision, and last successful generation.
 - [evidence_status](https://hsum.burkankale.com/docs/0.1.0-alpha.2/mcp/): Report read-only health and corpus status for the bound project.
 
 ## Source
