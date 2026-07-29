@@ -483,8 +483,10 @@ installation and reports the conflict.</p>
 
 <p>hSUM does not read another tool's SQLite database, vector store, worker,
 hooks, or cloud API. In alpha.4, hSUM indexes supported files inside an
-authorized repository. If a memory tool writes Markdown or text files into that
-repository, hSUM handles them as repository files.</p>
+authorized repository. If a memory tool writes supported Markdown or text files
+into that repository, hSUM includes them in the corpus. hSUM may return that
+content to the MCP client, which may forward it to a model provider under the
+client's policy.</p>
 
 <p>A memory system may record hSUM tool calls and summarize returned passages.
 Keep the <code>hsum://v1</code> citation when you need exact evidence. If a
