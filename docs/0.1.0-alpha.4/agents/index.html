@@ -90,6 +90,36 @@ correct absolute binary path and binding UUID already filled in:</p>
 remains a low-level escape hatch and emits the workspace-dynamic
 <code>hsum mcp</code> command.</p>
 
+<h2>Memory and company-brain tools</h2>
+<p>hSUM can run beside claude-mem and other agent-memory or company-brain
+systems. Each MCP server keeps its own registration and storage. The hSUM
+installer claims the <code>hsum</code> server name and appends one checksummed
+block to Codex's user instructions. It preserves other MCP entries and
+instruction text. If another command owns the <code>hsum</code> name, hSUM stops
+installation and reports the conflict.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Need</th><th>Use</th></tr></thead>
+<tbody>
+<tr><td>Current repository structure and implementation</td><td>hSUM search and citations</td></tr>
+<tr><td>Past sessions, decisions, and unfinished work</td><td>Your agent-memory system</td></tr>
+<tr><td>Knowledge shared across repositories or teams</td><td>Your company-brain system</td></tr>
+<tr><td>Current contents of a file you are editing</td><td>An ordinary file read</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>hSUM does not read another tool's SQLite database, vector store, worker,
+hooks, or cloud API. In alpha.4, hSUM indexes supported files inside an
+authorized repository. If a memory tool writes Markdown or text files into that
+repository, hSUM handles them as repository files.</p>
+
+<p>A memory system may record hSUM tool calls and summarize returned passages.
+Keep the <code>hsum://v1</code> citation when you need exact evidence. If a
+memory summary conflicts with the current repository, read the file and call
+<code>evidence_get</code> with source-hash verification.</p>
+
 <div class="note warn">
 <p><strong>Privacy</strong></p>
 <p>hSUM uploads no corpus data and no telemetry. But a cloud-backed agent may send
