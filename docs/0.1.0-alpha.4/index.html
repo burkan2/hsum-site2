@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Documentation — hSUM 0.1.0-alpha.4</title>
+<meta name="description" content="hSUM documentation: local, offline evidence retrieval for coding agents.">
+<link rel="canonical" href="https://hsum.burkankale.com/docs/0.1.0-alpha.4/">
+<link rel="stylesheet" href="/docs/assets/docs.css">
+</head>
+<body>
+<header class="site">
+  <div class="bar">
+    <a class="brand" href="/">h<span>SUM</span></a>
+    <span class="ver">0.1.0-alpha.4</span>
+    <nav>
+      <a href="/docs/0.1.0-alpha.4/">Docs</a>
+      <a href="/docs/0.1.0-alpha.4/cli/">CLI</a>
+      <a href="/docs/0.1.0-alpha.4/mcp/">MCP</a>
+      <a href="/docs/0.1.0-alpha.4/errors/">Errors</a>
+      <a href="https://github.com/burkan2/hSUM">GitHub</a>
+    </nav>
+  </div>
+</header>
+<div class="shell">
+  <aside class="side"><h4>Getting started</h4><ul>
+<li><a href="/docs/0.1.0-alpha.4/" aria-current="page">Overview</a></li>
+<li><a href="/docs/0.1.0-alpha.4/quickstart/">Quickstart</a></li>
+</ul>
+<h4>Guides</h4><ul>
+<li><a href="/docs/0.1.0-alpha.4/concepts/">Concepts</a></li>
+<li><a href="/docs/0.1.0-alpha.4/agents/">Connect an agent</a></li>
+<li><a href="/docs/0.1.0-alpha.4/mcp/">MCP reference</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/docs/0.1.0-alpha.4/cli/">CLI reference</a></li>
+<li><a href="/docs/0.1.0-alpha.4/errors/">Error codes</a></li>
+<li><a href="/docs/0.1.0-alpha.4/troubleshooting/">Troubleshooting</a></li>
+</ul></aside>
+  <main>
+    <p class="crumbs"><a href="/">hSUM</a> / <a href="/docs/0.1.0-alpha.4/">docs 0.1.0-alpha.4</a></p>
+
+<h1>hSUM documentation</h1>
+<p class="lede">hSUM indexes a local filesystem into an immutable, citable evidence store,
+then serves it to coding agents over a read-only MCP server. No account, no model
+download, no network.</p>
+
+<div class="note">
+<p><strong>Alpha</strong></p>
+<p>This documents <code>0.1.0-alpha.4</code>. Supported release archives are macOS
+arm64 and Linux x86_64 on local filesystems. The crate is not published to crates.io.
+See <a href="#boundaries">boundaries</a> for what is deliberately absent.</p>
+</div>
+
+<div class="note">
+<p><strong>Compatible update</strong></p>
+<p>Alpha.2 and alpha.3 indexes and citations remain compatible. Restart any
+in-flight MCP pagination after upgrading because cursors are release-bound.</p>
+</div>
+
+<div class="cards">
+  <div class="card"><h3><a href="quickstart/">Quickstart</a></h3><p>Install, index a repo, and run your first search in about five minutes.</p></div>
+  <div class="card"><h3><a href="concepts/">Concepts</a></h3><p>Generations, citations, trust bindings, and why evidence is immutable.</p></div>
+  <div class="card"><h3><a href="agents/">Connect an agent</a></h3><p>Install Codex once for repository-aware tools, or configure another MCP client.</p></div>
+  <div class="card"><h3><a href="cli/">CLI reference</a></h3><p>Every command and flag in the alpha.4 surface.</p></div>
+  <div class="card"><h3><a href="mcp/">MCP reference</a></h3><p>The four evidence tools, their inputs, and their JSON output.</p></div>
+  <div class="card"><h3><a href="errors/">Error codes</a></h3><p>Every stable subcode with cause and fix.</p></div>
+</div>
+
+<h2>What hSUM does</h2>
+<p>An agent asking "how does auth work here?" usually gets an answer assembled from
+whatever happened to fit in context. hSUM answers with <em>passages</em>, each one
+addressed by an immutable citation that resolves to exact bytes at an exact revision.</p>
+<ol>
+  <li><strong>Ingest</strong> walks a filesystem root and writes one atomic generation into a private SQLite index.</li>
+  <li><strong>Search</strong> combines exact identifier matching, conservative quoted-phrase matching, and lexical BM25.</li>
+  <li><strong>Get</strong> resolves an <code>hsum://v1</code> citation back to the exact bytes that were indexed.</li>
+</ol>
+<p>Retrieval is deterministic. The same query against the same generation returns the
+same passages in the same order.</p>
+
+<h2 id="boundaries">Boundaries</h2>
+<p>Absent in alpha.4, deliberately — so you can rely on what is present:</p>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Area</th><th>Status</th></tr></thead>
+<tbody>
+<tr><td>Local filesystem ingest, lexical + exact retrieval</td><td><span class="badge yes">included</span></td></tr>
+<tr><td>Read-only MCP stdio server</td><td><span class="badge yes">included</span></td></tr>
+<tr><td>Immutable citations with revision pinning</td><td><span class="badge yes">included</span></td></tr>
+<tr><td>Vector or semantic search, embeddings</td><td><span class="badge no">not in alpha.4</span></td></tr>
+<tr><td>Account, telemetry, HTTP server, remote connectors</td><td><span class="badge no">not in alpha.4</span></td></tr>
+<tr><td>File watcher, backup, restore, prune, migration</td><td><span class="badge no">not in alpha.4</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Agent-readable docs</h2>
+<p>A machine-readable summary of this site lives at
+<a href="/llms.txt"><code>/llms.txt</code></a>, following the
+<a href="https://llmstxt.org/">llms.txt</a> convention. Every documentation page is
+static HTML with no client-side rendering, so agents can fetch any URL directly.</p>
+
+  </main>
+</div>
+<footer class="site">
+  <div class="in">
+    <span>hSUM 0.1.0-alpha.4 — alpha</span>
+    <a href="/llms.txt">llms.txt</a>
+    <a href="https://github.com/burkan2/hSUM">Source</a>
+    <a href="https://github.com/burkan2/hSUM/blob/main/SECURITY.md">Security</a>
+  </div>
+</footer>
+</body>
+</html>
